@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Мои Документы QR</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Библиотека для создания QR-кодов -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+  <header class="topbar">
+    <h1>📄 Мои Документы</h1>
+    <p>Загрузите PDF и получите QR-код</p>
+  </header>
+
+  <main>
+    <!-- Кнопка загрузки -->
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="file-input" accept="application/pdf" hidden />
+      <div class="upload-icon">📤</div>
+      <div class="upload-text">Нажмите, чтобы загрузить PDF</div>
+    </div>
+
+    <!-- Список документов -->
+    <h2 class="section-title">Ваши документы</h2>
+    <div id="documents-list" class="documents-grid">
+      <!-- Сюда будут добавляться карточки -->
+    </div>
+  </main>
+
+  <!-- Модальное окно с QR-кодом -->
+  <div id="qr-modal" class="modal hidden">
+    <div class="modal-content">
+      <button class="close-btn" onclick="closeModal()">✕</button>
+      <h2 id="modal-title">QR-код документа</h2>
+      <div class="qr-container" id="qrcode"></div>
+      <p class="qr-hint">Наведите камеру телефона, чтобы открыть PDF</p>
+      <button class="btn-primary" onclick="downloadQR()">Скачать QR-код</button>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
