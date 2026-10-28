@@ -1,6 +1,6 @@
-// Инициализация IndexedDB (теперь храним ССЫЛКИ, а не файлы)
+// Инициализация IndexedDB
 let db;
-const request = indexedDB.open("PDF_QR_DB", 2); // Версия 2, так как структура изменилась
+const request = indexedDB.open("Files_QR_DB", 2); // Версия 2
 
 request.onupgradeneeded = (e) => {
   db = e.target.result;
@@ -30,13 +30,15 @@ const qrContainer = document.getElementById("qrcode");
 // Нажатие на зону загрузки
 uploadZone.addEventListener("click", () => fileInput.click());
 
-// Обработка выбранного файла
+// Обработка выбранного файла (ЛЮБОГО)
 fileInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  if (file.type !== "application/pdf") {
-    alert("Пожалуйста, выберите файл в формате PDF");
+  // Проверка размера (не больше 50 МБ, чтобы сервер не упал)
+  if (file.size > 50 * 1024 * 1024) {
+    alert("Файл слишком большой! Максимум 50 МБ.");
+    fileInput.value = "";
     return;
   }
 
@@ -59,7 +61,7 @@ fileInput.addEventListener("change", async (e) => {
 
     const result = await response.json();
     
-    // В ответе должна быть ссылка downloadLink
+    // Сервер возвращает прямую ссылку на скачивание
     const downloadUrl = result.downloadLink;
     
     if (!downloadUrl) {
@@ -68,7 +70,7 @@ fileInput.addEventListener("change", async (e) => {
 
     const id = Date.now().toString();
     
-    // Сохраняем ССЫЛКУ в IndexedDB
+    // Сохраняем ссылку и имя файла в IndexedDB
     const transaction = db.transaction(["files"], "readwrite");
     const store = transaction.objectStore("files");
     store.put({ id: id, name: file.name, url: downloadUrl });
@@ -76,20 +78,21 @@ fileInput.addEventListener("change", async (e) => {
     transaction.oncomplete = () => {
       fileInput.value = "";
       // Возвращаем зону загрузки обратно
-      uploadZone.innerHTML = `<div class="upload-icon">📤</div><div class="upload-text">Нажмите, чтобы загрузить PDF</div>`;
+      uploadZone.innerHTML = `<div class="upload-icon">📤</div><div class="upload-text">Нажмите, чтобы выбрать файл</div>`;
       loadDocuments();
-      alert("✅ Документ загружен! Теперь QR-код будет работать у всех.");
+      alert("✅ Файл загружен! QR-код готов.");
     };
 
   } catch (error) {
     console.error("Ошибка загрузки:", error);
-    alert("❌ Не удалось загрузить файл. Возможно, сервис временно недоступен или блокирует браузер.\n\nПопробуйте позже или используйте другой способ.");
+    alert("❌ Не удалось загрузить файл.\n\nВозможно, сервис временно недоступен, блокирует браузер или файл слишком большой.\n\nПопробуйте файл поменьше или повторите позже.");
+    
     // Возвращаем зону загрузки обратно
-    uploadZone.innerHTML = `<div class="upload-icon">📤</div><div class="upload-text">Нажмите, чтобы загрузить PDF</div>`;
+    uploadZone.innerHTML = `<div class="upload-icon">📤</div><div class="upload-text">Нажмите, чтобы выбрать файл</div>`;
   }
 });
 
-// Загрузка и отрисовка списка документов
+// Загрузка и отрисовка списка файлов
 function loadDocuments() {
   const transaction = db.transaction(["files"], "readonly");
   const store = transaction.objectStore("files");
@@ -100,16 +103,24 @@ function loadDocuments() {
     docsList.innerHTML = "";
 
     if (files.length === 0) {
-      docsList.innerHTML = `<p style="color: #888; grid-column: 1/-1; text-align: center;">Пока нет документов. Загрузите первый PDF!</p>`;
+      docsList.innerHTML = `<p style="color: #888; grid-column: 1/-1; text-align: center;">Пока нет файлов. Загрузите первый!</p>`;
       return;
     }
 
     files.forEach(file => {
       const card = document.createElement("div");
       card.className = "doc-card";
+      
+      // Определяем иконку по расширению
+      let icon = "📄";
+      if (file.name.match(/\.(jpg|jpeg|png|gif)$/i)) icon = "🖼️";
+      else if (file.name.match(/\.(doc|docx)$/i)) icon = "📝";
+      else if (file.name.match(/\.(xls|xlsx)$/i)) icon = "📊";
+      else if (file.name.match(/\.(zip|rar|7z)$/i)) icon = "🗜️";
+      
       card.innerHTML = `
         <button class="delete-btn" onclick="deleteDoc('${file.id}', event)">✕</button>
-        <div class="doc-icon">📄</div>
+        <div class="doc-icon">${icon}</div>
         <div class="doc-name">${file.name}</div>
       `;
       card.addEventListener("click", () => showQR(file));
@@ -121,7 +132,7 @@ function loadDocuments() {
 // Удаление документа
 window.deleteDoc = (id, event) => {
   event.stopPropagation();
-  if (!confirm("Удалить этот документ из списка?")) return;
+  if (!confirm("Удалить этот файл из списка?")) return;
 
   const transaction = db.transaction(["files"], "readwrite");
   const store = transaction.objectStore("files");
@@ -130,11 +141,11 @@ window.deleteDoc = (id, event) => {
   transaction.oncomplete = () => loadDocuments();
 };
 
-// Показ QR-кода (используем сохранённую ссылку)
+// Показ QR-кода
 function showQR(file) {
   qrContainer.innerHTML = "";
   new QRCode(qrContainer, {
-    text: file.url, // Берем ссылку из базы
+    text: file.url,
     width: 200,
     height: 200,
     colorDark: "#000000",
@@ -165,6 +176,6 @@ window.downloadQR = () => {
   } else {
     return;
   }
-  link.download = "QR_документ.png";
+  link.download = "QR_файл.png";
   link.click();
 };
