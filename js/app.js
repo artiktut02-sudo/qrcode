@@ -26,7 +26,7 @@ const qrModal = document.getElementById("qr-modal");
 const modalTitle = document.getElementById("modal-title");
 const qrContainer = document.getElementById("qrcode");
 
-// ТВОИ ДАННЫЕ ИЗ CLOUDINARY (без API Key)
+// ТВОИ ДАННЫЕ ИЗ CLOUDINARY (БЕЗ API KEY)
 const CLOUD_NAME = "y4wl5det";
 const UPLOAD_PRESET = "qrcodik";
 
@@ -51,8 +51,8 @@ fileInput.addEventListener("change", async (e) => {
     formData.append('upload_preset', UPLOAD_PRESET);
     // Строка с api_key УДАЛЕНА
 
-    // Используем auto/upload для любых файлов
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
+    // Используем raw/upload для документов
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, {
       method: 'POST',
       body: formData
     });
