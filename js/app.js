@@ -1,6 +1,6 @@
-// Инициализация IndexedDB
+// Инициализация IndexedDB (теперь храним ССЫЛКИ, а не файлы)
 let db;
-const request = indexedDB.open("PDF_QR_DB", 1);
+const request = indexedDB.open("PDF_QR_DB", 2); // Версия 2, так как структура изменилась
 
 request.onupgradeneeded = (e) => {
   db = e.target.result;
@@ -31,7 +31,7 @@ const qrContainer = document.getElementById("qrcode");
 uploadZone.addEventListener("click", () => fileInput.click());
 
 // Обработка выбранного файла
-fileInput.addEventListener("change", (e) => {
+fileInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
@@ -40,23 +40,53 @@ fileInput.addEventListener("change", (e) => {
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    const arrayBuffer = event.target.result;
-    const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+  // Показываем индикатор загрузки
+  uploadZone.innerHTML = `<div class="upload-icon">⏳</div><div class="upload-text">Загрузка на сервер...</div>`;
+
+  try {
+    // Отправляем файл на tmpfile.link
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('https://tmpfile.link/api/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ошибка сервера: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    // В ответе должна быть ссылка downloadLink
+    const downloadUrl = result.downloadLink;
+    
+    if (!downloadUrl) {
+      throw new Error("Сервер не вернул ссылку на файл");
+    }
+
     const id = Date.now().toString();
     
-    // Сохраняем в IndexedDB
+    // Сохраняем ССЫЛКУ в IndexedDB
     const transaction = db.transaction(["files"], "readwrite");
     const store = transaction.objectStore("files");
-    store.put({ id: id, name: file.name, data: blob });
+    store.put({ id: id, name: file.name, url: downloadUrl });
 
     transaction.oncomplete = () => {
-      fileInput.value = ""; // Очищаем input
+      fileInput.value = "";
+      // Возвращаем зону загрузки обратно
+      uploadZone.innerHTML = `<div class="upload-icon">📤</div><div class="upload-text">Нажмите, чтобы загрузить PDF</div>`;
       loadDocuments();
+      alert("✅ Документ загружен! Теперь QR-код будет работать у всех.");
     };
-  };
-  reader.readAsArrayBuffer(file);
+
+  } catch (error) {
+    console.error("Ошибка загрузки:", error);
+    alert("❌ Не удалось загрузить файл. Возможно, сервис временно недоступен или блокирует браузер.\n\nПопробуйте позже или используйте другой способ.");
+    // Возвращаем зону загрузки обратно
+    uploadZone.innerHTML = `<div class="upload-icon">📤</div><div class="upload-text">Нажмите, чтобы загрузить PDF</div>`;
+  }
 });
 
 // Загрузка и отрисовка списка документов
@@ -90,8 +120,8 @@ function loadDocuments() {
 
 // Удаление документа
 window.deleteDoc = (id, event) => {
-  event.stopPropagation(); // Чтобы не открывался QR
-  if (!confirm("Удалить этот документ?")) return;
+  event.stopPropagation();
+  if (!confirm("Удалить этот документ из списка?")) return;
 
   const transaction = db.transaction(["files"], "readwrite");
   const store = transaction.objectStore("files");
@@ -100,15 +130,11 @@ window.deleteDoc = (id, event) => {
   transaction.oncomplete = () => loadDocuments();
 };
 
-// Показ QR-кода
+// Показ QR-кода (используем сохранённую ссылку)
 function showQR(file) {
-  // 1. Создаем временную ссылку на файл
-  const url = URL.createObjectURL(file.data);
-  
-  // 2. Очищаем контейнер и генерируем QR
   qrContainer.innerHTML = "";
   new QRCode(qrContainer, {
-    text: url,
+    text: file.url, // Берем ссылку из базы
     width: 200,
     height: 200,
     colorDark: "#000000",
@@ -126,7 +152,7 @@ window.closeModal = () => {
   qrContainer.innerHTML = "";
 };
 
-// Скачивание QR-кода как картинки
+// Скачивание QR-кода
 window.downloadQR = () => {
   const canvas = qrContainer.querySelector("canvas");
   const img = qrContainer.querySelector("img");
