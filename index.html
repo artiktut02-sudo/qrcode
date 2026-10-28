@@ -11,20 +11,21 @@
 <body>
 
   <header class="topbar">
-    <h1>📄 Мои Документы</h1>
-    <p>Загрузите PDF и получите QR-код</p>
+    <h1>📁 Мои Файлы</h1>
+    <p>Загрузите файл и получите QR-код</p>
   </header>
 
   <main>
     <!-- Кнопка загрузки -->
     <div class="upload-zone" id="upload-zone">
-      <input type="file" id="file-input" accept="application/pdf" hidden />
+      <!-- Убрали accept, чтобы телефон показывал ВСЕ файлы -->
+      <input type="file" id="file-input" hidden />
       <div class="upload-icon">📤</div>
-      <div class="upload-text">Нажмите, чтобы загрузить PDF</div>
+      <div class="upload-text">Нажмите, чтобы выбрать файл</div>
     </div>
 
     <!-- Список документов -->
-    <h2 class="section-title">Ваши документы</h2>
+    <h2 class="section-title">Ваши файлы</h2>
     <div id="documents-list" class="documents-grid">
       <!-- Сюда будут добавляться карточки -->
     </div>
@@ -34,9 +35,9 @@
   <div id="qr-modal" class="modal hidden">
     <div class="modal-content">
       <button class="close-btn" onclick="closeModal()">✕</button>
-      <h2 id="modal-title">QR-код документа</h2>
+      <h2 id="modal-title">QR-код файла</h2>
       <div class="qr-container" id="qrcode"></div>
-      <p class="qr-hint">Наведите камеру телефона, чтобы открыть PDF</p>
+      <p class="qr-hint">Наведите камеру телефона, чтобы открыть файл</p>
       <button class="btn-primary" onclick="downloadQR()">Скачать QR-код</button>
     </div>
   </div>
