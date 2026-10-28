@@ -1,6 +1,6 @@
-// Инициализация IndexedDB
+// Инициализация IndexedDB (храним ссылки)
 let db;
-const request = indexedDB.open("Files_QR_DB", 2); // Версия 2
+const request = indexedDB.open("Files_QR_DB", 2);
 
 request.onupgradeneeded = (e) => {
   db = e.target.result;
@@ -27,6 +27,10 @@ const qrModal = document.getElementById("qr-modal");
 const modalTitle = document.getElementById("modal-title");
 const qrContainer = document.getElementById("qrcode");
 
+// ТВОИ ДАННЫЕ ИЗ CLOUDINARY
+const CLOUD_NAME = "y4wl5det";
+const UPLOAD_PRESET = "qrcodik";
+
 // Нажатие на зону загрузки
 uploadZone.addEventListener("click", () => fileInput.click());
 
@@ -35,22 +39,24 @@ fileInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  // Проверка размера (не больше 50 МБ, чтобы сервер не упал)
-  if (file.size > 50 * 1024 * 1024) {
-    alert("Файл слишком большой! Максимум 50 МБ.");
+  // Ограничение по размеру (до 10 МБ, чтобы бесплатный тариф не выдал ошибку)
+  if (file.size > 10 * 1024 * 1024) {
+    alert("Файл слишком большой! Максимум 10 МБ.");
     fileInput.value = "";
     return;
   }
 
   // Показываем индикатор загрузки
-  uploadZone.innerHTML = `<div class="upload-icon">⏳</div><div class="upload-text">Загрузка на сервер...</div>`;
+  uploadZone.innerHTML = `<div class="upload-icon">⏳</div><div class="upload-text">Загрузка в Cloudinary...</div>`;
 
   try {
-    // Отправляем файл на tmpfile.link
+    // Формируем данные для отправки
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('upload_preset', UPLOAD_PRESET);
 
-    const response = await fetch('https://tmpfile.link/api/upload', {
+    // Отправляем файл напрямую в Cloudinary
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
       method: 'POST',
       body: formData
     });
@@ -61,8 +67,8 @@ fileInput.addEventListener("change", async (e) => {
 
     const result = await response.json();
     
-    // Сервер возвращает прямую ссылку на скачивание
-    const downloadUrl = result.downloadLink;
+    // Cloudinary возвращает прямую ссылку в поле secure_url
+    const downloadUrl = result.secure_url;
     
     if (!downloadUrl) {
       throw new Error("Сервер не вернул ссылку на файл");
@@ -85,7 +91,7 @@ fileInput.addEventListener("change", async (e) => {
 
   } catch (error) {
     console.error("Ошибка загрузки:", error);
-    alert("❌ Не удалось загрузить файл.\n\nВозможно, сервис временно недоступен, блокирует браузер или файл слишком большой.\n\nПопробуйте файл поменьше или повторите позже.");
+    alert("❌ Не удалось загрузить файл.\n\nПроверьте интернет или попробуйте файл поменьше.");
     
     // Возвращаем зону загрузки обратно
     uploadZone.innerHTML = `<div class="upload-icon">📤</div><div class="upload-text">Нажмите, чтобы выбрать файл</div>`;
@@ -113,10 +119,11 @@ function loadDocuments() {
       
       // Определяем иконку по расширению
       let icon = "📄";
-      if (file.name.match(/\.(jpg|jpeg|png|gif)$/i)) icon = "🖼️";
+      if (file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) icon = "🖼️";
       else if (file.name.match(/\.(doc|docx)$/i)) icon = "📝";
       else if (file.name.match(/\.(xls|xlsx)$/i)) icon = "📊";
       else if (file.name.match(/\.(zip|rar|7z)$/i)) icon = "🗜️";
+      else if (file.name.match(/\.(pdf)$/i)) icon = "📕";
       
       card.innerHTML = `
         <button class="delete-btn" onclick="deleteDoc('${file.id}', event)">✕</button>
@@ -129,7 +136,7 @@ function loadDocuments() {
   };
 }
 
-// Удаление документа
+// Удаление документа (только из списка, в Cloudinary он останется)
 window.deleteDoc = (id, event) => {
   event.stopPropagation();
   if (!confirm("Удалить этот файл из списка?")) return;
