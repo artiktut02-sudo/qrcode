@@ -26,9 +26,8 @@ const qrModal = document.getElementById("qr-modal");
 const modalTitle = document.getElementById("modal-title");
 const qrContainer = document.getElementById("qrcode");
 
-// ТВОИ ДАННЫЕ ИЗ CLOUDINARY
+// ТВОИ ДАННЫЕ ИЗ CLOUDINARY (без API Key)
 const CLOUD_NAME = "y4wl5det";
-const API_KEY = "56512337472912"; 
 const UPLOAD_PRESET = "qrcodik";
 
 uploadZone.addEventListener("click", () => fileInput.click());
@@ -50,9 +49,9 @@ fileInput.addEventListener("change", async (e) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', UPLOAD_PRESET);
-    formData.append('api_key', API_KEY); // Передаем API Key
+    // Строка с api_key УДАЛЕНА
 
-    // Используем auto/upload, чтобы принимались и картинки, и документы
+    // Используем auto/upload для любых файлов
     const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
       method: 'POST',
       body: formData
@@ -103,7 +102,6 @@ function loadDocuments() {
       const card = document.createElement("div");
       card.className = "doc-card";
       
-      // Определяем иконку по расширению
       let icon = "📄";
       if (file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) icon = "🖼️";
       else if (file.name.match(/\.(doc|docx)$/i)) icon = "📝";
