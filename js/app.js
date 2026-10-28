@@ -1,4 +1,4 @@
-// Инициализация IndexedDB (храним ссылки)
+// Инициализация IndexedDB
 let db;
 const request = indexedDB.open("Files_QR_DB", 2);
 
@@ -19,7 +19,6 @@ request.onerror = (e) => {
   alert("Ошибка при инициализации хранилища");
 };
 
-// Элементы DOM
 const fileInput = document.getElementById("file-input");
 const uploadZone = document.getElementById("upload-zone");
 const docsList = document.getElementById("documents-list");
@@ -27,78 +26,60 @@ const qrModal = document.getElementById("qr-modal");
 const modalTitle = document.getElementById("modal-title");
 const qrContainer = document.getElementById("qrcode");
 
-// ТВОИ ДАННЫЕ ИЗ CLOUDINARY
 const CLOUD_NAME = "y4wl5det";
 const UPLOAD_PRESET = "qrcodik";
 
-// Нажатие на зону загрузки
 uploadZone.addEventListener("click", () => fileInput.click());
 
-// Обработка выбранного файла (ЛЮБОГО)
 fileInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  // Ограничение по размеру (до 10 МБ, чтобы бесплатный тариф не выдал ошибку)
   if (file.size > 10 * 1024 * 1024) {
-    alert("Файл слишком большой! Максимум 10 МБ.");
+    alert("Файл слишком большой! Максимум 10 МБ.\n\nВаш файл: " + (file.size / (1024 * 1024)).toFixed(1) + " МБ");
     fileInput.value = "";
     return;
   }
 
-  // Показываем индикатор загрузки
   uploadZone.innerHTML = `<div class="upload-icon">⏳</div><div class="upload-text">Загрузка в Cloudinary...</div>`;
 
   try {
-    // Формируем данные для отправки
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', UPLOAD_PRESET);
 
-    // Отправляем файл напрямую в Cloudinary
     const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
       method: 'POST',
       body: formData
     });
 
-    if (!response.ok) {
-      throw new Error(`Ошибка сервера: ${response.status}`);
-    }
-
     const result = await response.json();
-    
-    // Cloudinary возвращает прямую ссылку в поле secure_url
-    const downloadUrl = result.secure_url;
-    
-    if (!downloadUrl) {
-      throw new Error("Сервер не вернул ссылку на файл");
+
+    if (!response.ok) {
+      throw new Error(result.error?.message || `Ошибка сервера: ${response.status}`);
     }
 
+    const downloadUrl = result.secure_url;
     const id = Date.now().toString();
     
-    // Сохраняем ссылку и имя файла в IndexedDB
     const transaction = db.transaction(["files"], "readwrite");
     const store = transaction.objectStore("files");
     store.put({ id: id, name: file.name, url: downloadUrl });
 
     transaction.oncomplete = () => {
       fileInput.value = "";
-      // Возвращаем зону загрузки обратно
       uploadZone.innerHTML = `<div class="upload-icon">📤</div><div class="upload-text">Нажмите, чтобы выбрать файл</div>`;
       loadDocuments();
       alert("✅ Файл загружен! QR-код готов.");
     };
 
   } catch (error) {
-    console.error("Ошибка загрузки:", error);
-    alert("❌ Не удалось загрузить файл.\n\nПроверьте интернет или попробуйте файл поменьше.");
-    
-    // Возвращаем зону загрузки обратно
+    console.error("Ошибка:", error);
+    alert("❌ Не удалось загрузить файл.\n\nПричина: " + error.message);
     uploadZone.innerHTML = `<div class="upload-icon">📤</div><div class="upload-text">Нажмите, чтобы выбрать файл</div>`;
   }
 });
 
-// Загрузка и отрисовка списка файлов
 function loadDocuments() {
   const transaction = db.transaction(["files"], "readonly");
   const store = transaction.objectStore("files");
@@ -117,7 +98,6 @@ function loadDocuments() {
       const card = document.createElement("div");
       card.className = "doc-card";
       
-      // Определяем иконку по расширению
       let icon = "📄";
       if (file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) icon = "🖼️";
       else if (file.name.match(/\.(doc|docx)$/i)) icon = "📝";
@@ -136,7 +116,6 @@ function loadDocuments() {
   };
 }
 
-// Удаление документа (только из списка, в Cloudinary он останется)
 window.deleteDoc = (id, event) => {
   event.stopPropagation();
   if (!confirm("Удалить этот файл из списка?")) return;
@@ -148,7 +127,6 @@ window.deleteDoc = (id, event) => {
   transaction.oncomplete = () => loadDocuments();
 };
 
-// Показ QR-кода
 function showQR(file) {
   qrContainer.innerHTML = "";
   new QRCode(qrContainer, {
@@ -164,13 +142,11 @@ function showQR(file) {
   qrModal.classList.remove("hidden");
 }
 
-// Закрытие модалки
 window.closeModal = () => {
   qrModal.classList.add("hidden");
   qrContainer.innerHTML = "";
 };
 
-// Скачивание QR-кода
 window.downloadQR = () => {
   const canvas = qrContainer.querySelector("canvas");
   const img = qrContainer.querySelector("img");
