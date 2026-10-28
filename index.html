@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Мои Документы QR</title>
   <link rel="stylesheet" href="css/style.css" />
-  <!-- Библиотека для создания QR-кодов -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -16,22 +15,16 @@
   </header>
 
   <main>
-    <!-- Кнопка загрузки -->
     <div class="upload-zone" id="upload-zone">
-      <!-- Убрали accept, чтобы телефон показывал ВСЕ файлы -->
       <input type="file" id="file-input" hidden />
       <div class="upload-icon">📤</div>
       <div class="upload-text">Нажмите, чтобы выбрать файл</div>
     </div>
 
-    <!-- Список документов -->
     <h2 class="section-title">Ваши файлы</h2>
-    <div id="documents-list" class="documents-grid">
-      <!-- Сюда будут добавляться карточки -->
-    </div>
+    <div id="documents-list" class="documents-grid"></div>
   </main>
 
-  <!-- Модальное окно с QR-кодом -->
   <div id="qr-modal" class="modal hidden">
     <div class="modal-content">
       <button class="close-btn" onclick="closeModal()">✕</button>
